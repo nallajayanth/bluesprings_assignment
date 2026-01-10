@@ -7,7 +7,9 @@ import '../../unauthorized/screens/unauthorized_vehicles_screen.dart';
 import '../screens/home_screen.dart';
 
 class CustomDrawer extends StatelessWidget {
-  const CustomDrawer({super.key});
+  final String currentRoute;
+
+  const CustomDrawer({super.key, this.currentRoute = 'Dashboard'});
 
   @override
   Widget build(BuildContext context) {
@@ -46,17 +48,18 @@ class CustomDrawer extends StatelessWidget {
               ),
             ),
           ),
-          _buildDrawerItem(context, Icons.dashboard_outlined, 'Dashboard', true),
-          _buildDrawerItem(context, Icons.car_rental, 'Vehicle Registration', false),
-          _buildDrawerItem(context, Icons.analytics_outlined, 'Movement Reports', false),
-          _buildDrawerItem(context, Icons.timer_outlined, 'Visitor Duration', false),
-          _buildDrawerItem(context, Icons.do_not_disturb_on_outlined, 'Unauthorize', false),
+          _buildDrawerItem(context, Icons.dashboard_outlined, 'Dashboard'),
+          _buildDrawerItem(context, Icons.car_rental, 'Vehicle Registration'),
+          _buildDrawerItem(context, Icons.analytics_outlined, 'Movement Reports'),
+          _buildDrawerItem(context, Icons.timer_outlined, 'Visitor Duration'),
+          _buildDrawerItem(context, Icons.do_not_disturb_on_outlined, 'Unauthorize'),
         ],
       ),
     );
   }
 
-  Widget _buildDrawerItem(BuildContext context, IconData icon, String title, bool isSelected) {
+  Widget _buildDrawerItem(BuildContext context, IconData icon, String title) {
+    final bool isSelected = currentRoute == title;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: isSelected
@@ -78,6 +81,11 @@ class CustomDrawer extends StatelessWidget {
           ),
         ),
         onTap: () {
+          if (isSelected) {
+            Navigator.pop(context); // Close drawer if already on page
+            return;
+          }
+
           if (title == 'Dashboard') {
              Navigator.pushReplacement(
               context,

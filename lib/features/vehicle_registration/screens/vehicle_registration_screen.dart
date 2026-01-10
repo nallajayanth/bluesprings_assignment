@@ -5,7 +5,7 @@ import '../../home/widgets/custom_drawer.dart';
 import '../models/vehicle_model.dart';
 import '../services/vehicle_service.dart';
 import 'add_vehicle_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/auth_service.dart';
 
 class VehicleRegistrationScreen extends StatefulWidget {
   const VehicleRegistrationScreen({super.key});
@@ -17,6 +17,7 @@ class VehicleRegistrationScreen extends StatefulWidget {
 class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final _vehicleService = VehicleService();
+  final _authService = AuthService();
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
 
@@ -233,16 +234,20 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-      try {
-        await Supabase.instance.client.auth.signOut();
-        if (context.mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-      } catch (e) {
-        // ignore error
+    try {
+      await _authService.signOut();
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
       }
+    } catch (e) {
+      if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error signing out: $e')),
+          );
+      }
+    }
   }
 
   @override
@@ -277,7 +282,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
           ),
         ],
       ),
-      drawer: const CustomDrawer(),
+      drawer: const CustomDrawer(currentRoute: 'Vehicle Registration'),
       body: SingleChildScrollView( // Allow scrolling for the whole page if needed
         child: Padding(
           padding: const EdgeInsets.all(20.0),

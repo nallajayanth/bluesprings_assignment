@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../home/screens/home_screen.dart';
@@ -16,17 +15,16 @@ class LoginFormSection extends StatefulWidget {
 class _LoginFormSectionState extends State<LoginFormSection> {
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
   bool _isLoading = false;
-  bool _isLogin = true; // Toggle between Login and Sign Up
 
-  Future<void> _handleAuth() async {
-    final email = _emailController.text.trim();
+  Future<void> _handleLogin() async {
+    final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
@@ -36,41 +34,18 @@ class _LoginFormSectionState extends State<LoginFormSection> {
     setState(() => _isLoading = true);
 
     try {
-      if (_isLogin) {
-        await _authService.signIn(email: email, password: password);
-      } else {
-        await _authService.signUp(email: email, password: password);
-        if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sign up successful! Please log in.')),
-          );
-          setState(() {
-            _isLogin = true;
-            _isLoading = false;
-          });
-          return;
-        }
-      }
+      await _authService.signIn(username: username, password: password);
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
            MaterialPageRoute(builder: (_) => const DashboardScreen()),
         );
       }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An unexpected error occurred: $e'),
+            content: Text(e.toString().replaceAll('Exception: ', '')),
             backgroundColor: Colors.red,
           ),
         );
@@ -111,7 +86,7 @@ class _LoginFormSectionState extends State<LoginFormSection> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isLogin ? 'Login to continue' : 'Create an account',
+                  'Login to continue',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: AppColors.textSecondary,
@@ -122,21 +97,20 @@ class _LoginFormSectionState extends State<LoginFormSection> {
           ),
           const SizedBox(height: 40),
           
-          // Email
+          // Username
           FadeInUp(
             delay: const Duration(milliseconds: 100),
             child: TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
+              controller: _usernameController,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: AppColors.inputBackground,
-                prefixIcon: const Icon(Icons.email, color: Colors.black87),
+                prefixIcon: const Icon(Icons.person, color: Colors.black87),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                hintText: 'Email',
+                hintText: 'Username',
                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
@@ -175,38 +149,37 @@ class _LoginFormSectionState extends State<LoginFormSection> {
           ),
           const SizedBox(height: 16),
 
-          // Remember Me (Only show on Login)
-          if (_isLogin)
-            FadeInUp(
-              delay: const Duration(milliseconds: 300),
-              child: Row(
-                children: [
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      onChanged: (val) {
-                        setState(() {
-                          _rememberMe = val ?? false;
-                        });
-                      },
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+          // Remember Me
+          FadeInUp(
+            delay: const Duration(milliseconds: 300),
+            child: Row(
+              children: [
+                SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: Checkbox(
+                    value: _rememberMe,
+                    onChanged: (val) {
+                      setState(() {
+                        _rememberMe = val ?? false;
+                      });
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Remember me',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Remember me',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
           const SizedBox(height: 30),
 
           // Action Button
@@ -231,7 +204,7 @@ class _LoginFormSectionState extends State<LoginFormSection> {
                 ],
               ),
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleAuth,
+                onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
@@ -244,10 +217,10 @@ class _LoginFormSectionState extends State<LoginFormSection> {
                   : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_isLogin ? Icons.login : Icons.person_add, color: Colors.white),
+                      const Icon(Icons.login, color: Colors.white),
                       const SizedBox(width: 8),
                       Text(
-                        _isLogin ? 'Login' : 'Sign Up',
+                        'Login',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -258,27 +231,6 @@ class _LoginFormSectionState extends State<LoginFormSection> {
                   ),
               ),
             ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Toggle Login/SignUp
-          FadeInUp(
-             delay: const Duration(milliseconds: 500),
-             child: TextButton(
-               onPressed: () {
-                 setState(() {
-                   _isLogin = !_isLogin;
-                 });
-               },
-               child: Text(
-                 _isLogin ? 'Don\'t have an account? Sign Up' : 'Already have an account? Login',
-                 style: GoogleFonts.inter(
-                   color: AppColors.textSecondary, 
-                   decoration: TextDecoration.underline,
-                 ),
-               ),
-             ),
           ),
         ],
       ),

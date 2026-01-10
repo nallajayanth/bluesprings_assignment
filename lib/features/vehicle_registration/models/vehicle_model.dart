@@ -1,10 +1,10 @@
 class Vehicle {
-  final int? id;
+  final String? id; // Changed to String as MongoDB usually uses string ObjectIds
   final String vehicleNumber;
   final String ownerName;
   final String vehicleType;
   final String flatNumber;
-  final String? fastTagId; // Optional as per UI ("Optional - for automatic...")
+  final String? fastTagId;
   final String status;
   final String residentType;
   final String blockName;
@@ -29,33 +29,34 @@ class Vehicle {
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
-      id: json['id'],
-      vehicleNumber: json['vehicle_number'],
-      ownerName: json['owner_name'],
-      vehicleType: json['vehicle_type'],
-      flatNumber: json['flat_number'],
-      fastTagId: json['fasttag_id'],
-      status: json['status'],
-      residentType: json['resident_type'] ?? 'Owner', // Default if missing
-      blockName: json['block_name'] ?? '',
-      parkingSlot: json['parking_slot'] ?? '',
-      isBlocked: json['is_blocked'] ?? false,
+      id: json['id']?.toString() ?? json['_id']?.toString(), // Handle both id and _id
+      vehicleNumber: json['vehicleNumber'] ?? '',
+      ownerName: json['ownerName'] ?? '',
+      vehicleType: json['vehicleType'] ?? '',
+      flatNumber: json['flatNumber'] ?? '',
+      fastTagId: json['fastTagId'],
+      status: json['status'] ?? 'Active',
+      residentType: json['residentType'] ?? 'Owner',
+      blockName: json['blockName'] ?? '',
+      parkingSlot: json['parkingSlot'] ?? '',
+      isBlocked: json['isBlocked'] ?? false,
       reason: json['reason'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'vehicle_number': vehicleNumber,
-      'owner_name': ownerName,
-      'vehicle_type': vehicleType,
-      'flat_number': flatNumber,
-      'fasttag_id': fastTagId,
+      if (id != null) 'id': id,
+      'vehicleNumber': vehicleNumber,
+      'ownerName': ownerName,
+      'vehicleType': vehicleType,
+      'flatNumber': flatNumber,
+      'fastTagId': fastTagId,
       'status': status,
-      'resident_type': residentType,
-      'block_name': blockName,
-      'parking_slot': parkingSlot,
-      'is_blocked': isBlocked,
+      'residentType': residentType,
+      'blockName': blockName,
+      'parkingSlot': parkingSlot,
+      'isBlocked': isBlocked,
       'reason': reason,
     };
   }
