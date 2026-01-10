@@ -10,6 +10,7 @@ class Vehicle {
   final String blockName;
   final String parkingSlot;
   final bool isBlocked;
+  final String? reason;
 
   Vehicle({
     this.id,
@@ -23,6 +24,7 @@ class Vehicle {
     required this.blockName,
     required this.parkingSlot,
     this.isBlocked = false,
+    this.reason,
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class Vehicle {
       blockName: json['block_name'] ?? '',
       parkingSlot: json['parking_slot'] ?? '',
       isBlocked: json['is_blocked'] ?? false,
+      reason: json['reason'],
     );
   }
 
@@ -53,6 +56,7 @@ class Vehicle {
       'block_name': blockName,
       'parking_slot': parkingSlot,
       'is_blocked': isBlocked,
+      'reason': reason,
     };
   }
 }

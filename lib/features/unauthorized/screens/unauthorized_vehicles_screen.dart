@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../home/widgets/custom_drawer.dart';
-import '../models/unauthorized_vehicle_model.dart';
-import '../services/unauthorized_service.dart';
+import '../../vehicle_registration/models/vehicle_model.dart';
+import '../../vehicle_registration/services/vehicle_service.dart';
 
 class UnauthorizedVehiclesScreen extends StatefulWidget {
   const UnauthorizedVehiclesScreen({super.key});
@@ -15,27 +15,9 @@ class UnauthorizedVehiclesScreen extends StatefulWidget {
 
 class _UnauthorizedVehiclesScreenState extends State<UnauthorizedVehiclesScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final UnauthorizedService _service = UnauthorizedService();
+  final VehicleService _service = VehicleService();
   bool _isLoading = true;
-  List<UnauthorizedVehicle> _vehicles = [];
-
-  // Static mock data for fallback/demo if Supabase is empty/fails
-  final List<UnauthorizedVehicle> _mockVehicles = [
-    UnauthorizedVehicle(
-      id: 1,
-      vehicleNumber: 'MH01XY9999',
-      unauthorizedDate: DateTime(2025, 12, 28, 12, 49),
-      reason: 'Unauthorized entry multiple times',
-      status: 'Unauthorized',
-    ),
-     UnauthorizedVehicle(
-      id: 2,
-      vehicleNumber: 'TS08UB5555',
-      unauthorizedDate: DateTime(2025, 12, 29, 10, 15),
-      reason: 'Blacklisted due to parking violation',
-      status: 'Unauthorized',
-    ),
-  ];
+  List<Vehicle> _vehicles = [];
 
   @override
   void initState() {
@@ -47,21 +29,12 @@ class _UnauthorizedVehiclesScreenState extends State<UnauthorizedVehiclesScreen>
     setState(() => _isLoading = true);
     try {
       final data = await _service.getUnauthorizedVehicles();
-      if (data.isEmpty && mounted) {
-        // Use Mock data if DB is empty for demo purposes, 
-        // normally we would just show empty state
-        // setState(() => _vehicles = _mockVehicles);
-        setState(() => _vehicles = []);
-      } else {
-        setState(() => _vehicles = data);
-      }
+      setState(() => _vehicles = data);
     } catch (e) {
       debugPrint('Error fetching unauthorized vehicles: $e');
       if (mounted) {
-         // Fallback to mock data on error (e.g. table doesn't exist yet)
-         setState(() => _vehicles = _mockVehicles);
          ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Showing demo data. Error: $e')),
+           SnackBar(content: Text('Error: $e')),
          );
       }
     } finally {
@@ -69,21 +42,33 @@ class _UnauthorizedVehiclesScreenState extends State<UnauthorizedVehiclesScreen>
     }
   }
 
-  Future<void> _authorizeVehicle(int id) async {
+  Future<void> _authorizeVehicle(Vehicle vehicle) async {
     try {
-      // Optimistic update
-      // await _service.updateStatus(id, 'Authorized'); 
-      // OR Delete depending on requirement. The UI shows 'Authorized' button which implies changing status.
-      // But typically "Unauthorize New Vehicle" adds to list. "Authorized" might remove or mark resolved.
-      // Let's assume it removes it or marks it authorized.
+      // Create updated vehicle object with authorized status
+      final updatedVehicle = Vehicle(
+        id: vehicle.id,
+        vehicleNumber: vehicle.vehicleNumber,
+        ownerName: vehicle.ownerName,
+        vehicleType: vehicle.vehicleType,
+        flatNumber: vehicle.flatNumber,
+        blockName: vehicle.blockName,
+        parkingSlot: vehicle.parkingSlot,
+        residentType: vehicle.residentType,
+        fastTagId: vehicle.fastTagId,
+        status: 'Authorized',
+        isBlocked: false,
+        reason: null, // Clear reason
+      );
+
+      await _service.updateVehicle(updatedVehicle);
       
-      // Let's delete it for now as "Authorized" means it's no longer unauthorized
-      await _service.deleteUnauthorizedVehicle(id);
-      
-      _fetchVehicles(); // Refresh
+      _fetchVehicles(); // Refresh list
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vehicle Access Authorized')),
+          const SnackBar(
+            content: Text('Vehicle Access Authorized'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
@@ -133,8 +118,11 @@ class _UnauthorizedVehiclesScreenState extends State<UnauthorizedVehiclesScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
              // Header Row
-             Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+             Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12.0,
+                runSpacing: 12.0,
                 children: [
                    const Text(
                     'Unauthorized Vehicles',
@@ -142,8 +130,9 @@ class _UnauthorizedVehiclesScreenState extends State<UnauthorizedVehiclesScreen>
                    ),
                    ElevatedButton.icon(
                       onPressed: () {
-                         // TODO: Show dialog to add new unauthorized vehicle
-                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Feature coming soon')));
+                         // This button could navigate to AddVehicleScreen or show a dialog
+                         // For now let's just show a message or navigate to add vehicle
+                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Use "Vehicle Registration" to add new blocked vehicles')));
                       },
                       icon: const Icon(Icons.block, color: Colors.white, size: 18),
                       label: const Text('Unauthorize New Vehicle'),
@@ -167,64 +156,77 @@ class _UnauthorizedVehiclesScreenState extends State<UnauthorizedVehiclesScreen>
                      padding: const EdgeInsets.all(20.0),
                      child: _isLoading 
                         ? const Center(child: CircularProgressIndicator())
-                        : SizedBox(
-                             width: double.infinity,
-                             child: SingleChildScrollView(
-                                 scrollDirection: Axis.horizontal,
-                                 child: DataTable(
-                                     headingRowColor: MaterialStateProperty.all(Colors.transparent),
-                                     columnSpacing: 40,
-                                     horizontalMargin: 0,
-                                     columns: const [
-                                         DataColumn(label: Text('Vehicle Number', style: TextStyle(fontWeight: FontWeight.bold))),
-                                         DataColumn(label: Text('Unauthorized Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                                         DataColumn(label: Text('Reason', style: TextStyle(fontWeight: FontWeight.bold))),
-                                         DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                                         DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
-                                     ],
-                                     rows: _vehicles.map((vehicle) {
-                                        return DataRow(
-                                            cells: [
-                                                DataCell(Text(vehicle.vehicleNumber, style: const TextStyle(fontWeight: FontWeight.w500))),
-                                                DataCell(Text(DateFormat('dd-MM-yyyy HH:mm').format(vehicle.unauthorizedDate))),
-                                                DataCell(
-                                                   ConstrainedBox(
-                                                      constraints: const BoxConstraints(maxWidth: 250),
-                                                      child: Text(vehicle.reason, overflow: TextOverflow.ellipsis),
-                                                   )
-                                                ),
-                                                DataCell(
-                                                    Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                            color: const Color(0xFFD32F2F),
-                                                            borderRadius: BorderRadius.circular(6),
-                                                        ),
-                                                        child: Text(
-                                                            vehicle.status,
-                                                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                                        ),
-                                                    )
-                                                ),
-                                                DataCell(
-                                                    OutlinedButton.icon(
-                                                        onPressed: () => _authorizeVehicle(vehicle.id ?? 0),
-                                                        icon: const Icon(Icons.check_circle_outline, size: 16),
-                                                        label: const Text('Authorized'),
-                                                        style: OutlinedButton.styleFrom(
-                                                            foregroundColor: const Color(0xFF2E7D32), // Green
-                                                            side: const BorderSide(color: Color(0xFF2E7D32)),
-                                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                                                        ),
-                                                    )
-                                                ),
-                                            ]
-                                        );
-                                     }).toList(),
+                        : _vehicles.isEmpty 
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20.0),
+                                  child: Text('No unauthorized vehicles found'),
+                                ),
+                              )
+                            : SizedBox(
+                                 width: double.infinity,
+                                 child: SingleChildScrollView(
+                                     scrollDirection: Axis.horizontal,
+                                     child: DataTable(
+                                         headingRowColor: MaterialStateProperty.all(Colors.transparent),
+                                         columnSpacing: 40,
+                                         horizontalMargin: 0,
+                                         columns: const [
+                                             DataColumn(label: Text('Vehicle Number', style: TextStyle(fontWeight: FontWeight.bold))),
+                                             DataColumn(label: Text('Block Date', style: TextStyle(fontWeight: FontWeight.bold))),
+                                             DataColumn(label: Text('Reason', style: TextStyle(fontWeight: FontWeight.bold))),
+                                             DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                                             DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+                                         ],
+                                         rows: _vehicles.map((vehicle) {
+                                            // We don't have block date in schema yet, using current date or created_at if available
+                                            // For now just showing '-' or assuming it was blocked recently. 
+                                            // Ideally schema should have `created_at` or `updated_at`.
+                                            // Let's us show '-' for now or just today's date for demo if we want.
+                                            final dateStr = DateFormat('dd-MM-yyyy').format(DateTime.now()); 
+
+                                            return DataRow(
+                                                cells: [
+                                                    DataCell(Text(vehicle.vehicleNumber, style: const TextStyle(fontWeight: FontWeight.w500))),
+                                                    DataCell(Text(dateStr)), // Placeholder for block date
+                                                    DataCell(
+                                                       ConstrainedBox(
+                                                          constraints: const BoxConstraints(maxWidth: 250),
+                                                          child: Text(vehicle.reason ?? 'No reason provided', overflow: TextOverflow.ellipsis),
+                                                       )
+                                                    ),
+                                                    DataCell(
+                                                        Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                            decoration: BoxDecoration(
+                                                                color: const Color(0xFFD32F2F),
+                                                                borderRadius: BorderRadius.circular(6),
+                                                            ),
+                                                            child: const Text(
+                                                                'Unauthorized',
+                                                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                                            ),
+                                                        )
+                                                    ),
+                                                    DataCell(
+                                                        OutlinedButton.icon(
+                                                            onPressed: () => _authorizeVehicle(vehicle),
+                                                            icon: const Icon(Icons.check_circle_outline, size: 16),
+                                                            label: const Text('Authorized'),
+                                                            style: OutlinedButton.styleFrom(
+                                                                foregroundColor: const Color(0xFF2E7D32), // Green
+                                                                side: const BorderSide(color: Color(0xFF2E7D32)),
+                                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                                            ),
+                                                        )
+                                                    ),
+                                                ]
+                                            );
+                                         }).toList(),
+                                     ),
                                  ),
                              ),
-                         ),
                  ),
              ),
           ],

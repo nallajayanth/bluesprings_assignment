@@ -19,6 +19,21 @@ class VehicleService {
     }
   }
 
+  // Fetch only unauthorized/blocked vehicles
+  Future<List<Vehicle>> getUnauthorizedVehicles() async {
+    try {
+      final data = await _supabase
+          .from(_tableName)
+          .select()
+          .eq('is_blocked', true)
+          .order('id', ascending: false);
+      
+      return (data as List).map((e) => Vehicle.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Failed to load unauthorized vehicles: $e');
+    }
+  }
+
   // Add a new vehicle
   Future<void> addVehicle(Vehicle vehicle) async {
     try {

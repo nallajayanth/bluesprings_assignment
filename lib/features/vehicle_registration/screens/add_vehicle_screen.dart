@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../models/vehicle_model.dart';
@@ -24,6 +25,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _blockNameController = TextEditingController();
   final _parkingSlotController = TextEditingController();
   final _fastTagIdController = TextEditingController();
+  final _reasonController = TextEditingController();
 
   // Dropdowns & Checkboxes
   String? _selectedVehicleType;
@@ -54,6 +56,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _blockNameController.text = vehicle.blockName;
     _parkingSlotController.text = vehicle.parkingSlot;
     _fastTagIdController.text = vehicle.fastTagId ?? '';
+    _reasonController.text = vehicle.reason ?? '';
     
     // Check if values exist in list to prevent errors if data is stale
     if (_vehicleTypes.contains(vehicle.vehicleType)) {
@@ -93,6 +96,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           : _fastTagIdController.text.trim(),
       status: _isAuthorized ? 'Authorized' : 'Unauthorized',
       isBlocked: _isBlocked,
+      reason: _isBlocked ? _reasonController.text.trim() : null,
     );
 
     try {
@@ -282,6 +286,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       ],
                     ),
                   ),
+
+                  // Reason field - only visible if blocked
+                  if (_isBlocked) ...[
+                    const SizedBox(height: 16),
+                    _buildTextField('Reason for Blocking *', _reasonController),
+                  ],
                   
                   const SizedBox(height: 40),
 
