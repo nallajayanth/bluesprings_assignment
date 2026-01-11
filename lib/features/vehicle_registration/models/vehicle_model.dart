@@ -39,7 +39,7 @@ class Vehicle {
       residentType: json['residentType'] ?? 'Owner',
       blockName: json['blockName'] ?? '',
       parkingSlot: json['parkingSlot'] ?? '',
-      isBlocked: json['isBlocked'] ?? false,
+      isBlocked: json['isBlocked'] ?? json['is_blocked'] ?? false,
       reason: json['reason'],
     );
   }

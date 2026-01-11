@@ -35,63 +35,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize stats placeholders immediately so UI shows structure
+    _stats = [
+        StatData(label: 'TOTAL VEHICLES', value: '-', iconPath: '', color: 0xFF5C6BC0),
+        StatData(label: 'TODAY ENTRIES', value: '-', iconPath: '', color: 0xFF43A047),
+        StatData(label: 'TODAY EXITS', value: '-', iconPath: '', color: 0xFF00ACC1),
+        StatData(label: 'VISITORS TODAY', value: '-', iconPath: '', color: 0xFFF57F17),
+    ];
     _fetchData();
   }
 
   Future<void> _fetchData() async {
-    setState(() => _isLoading = true);
+    // Don't set _isLoading to true here if we want to keep showing previous data on refresh
+    // But for initial load, _isLoading is already true.
+    // If we want to show a linear progress bar when refreshing, we can keep it.
+    // Lets relies on RefreshIndicator for refresh, but for initial load _isLoading is true.
+    
     try {
       // 1. Fetch Stats
       final statsMap = await _dashboardService.getStats();
-      _stats = [
-        StatData(
-          label: 'TOTAL VEHICLES',
-          value: statsMap['totalVehicles']?.toString() ?? '0',
-          iconPath: '',
-          color: 0xFF5C6BC0,
-        ),
-        StatData(
-          label: 'TODAY ENTRIES',
-          value: statsMap['todayEntries']?.toString() ?? '0',
-          iconPath: '',
-          color: 0xFF43A047,
-        ),
-        StatData(
-          label: 'TODAY EXITS',
-          value: statsMap['todayExits']?.toString() ?? '0',
-          iconPath: '',
-          color: 0xFF00ACC1,
-        ),
-        StatData(
-          label: 'VISITORS TODAY',
-          value: statsMap['visitorsToday']?.toString() ?? '0',
-          iconPath: '',
-          color: 0xFFF57F17,
-        ),
-      ];
+      if (mounted) {
+        setState(() {
+           _stats = [
+            StatData(
+              label: 'TOTAL VEHICLES',
+              value: statsMap['totalVehicles']?.toString() ?? '0',
+              iconPath: '',
+              color: 0xFF5C6BC0,
+            ),
+            StatData(
+              label: 'TODAY ENTRIES',
+              value: statsMap['todayEntries']?.toString() ?? '0',
+              iconPath: '',
+              color: 0xFF43A047,
+            ),
+            StatData(
+              label: 'TODAY EXITS',
+              value: statsMap['todayExits']?.toString() ?? '0',
+              iconPath: '',
+              color: 0xFF00ACC1,
+            ),
+            StatData(
+              label: 'VISITORS TODAY',
+              value: statsMap['visitorsToday']?.toString() ?? '0',
+              iconPath: '',
+              color: 0xFFF57F17,
+            ),
+          ];
+        });
+      }
 
       // 2. Fetch Graph Data
       final graphList = await _dashboardService.getGraphData();
-      _weeklyData = graphList.map((e) => WeeklyData.fromJson(e)).toList();
+      if (mounted) {
+        setState(() {
+            _weeklyData = graphList.map((e) => WeeklyData.fromJson(e)).toList();
+        });
+      }
 
       // 3. Fetch Recent Activity (Reports)
       final activityList = await _dashboardService.getRecentActivity();
-      _activities = activityList.map((e) => ActivityLog.fromJson(e)).toList();
+      if (mounted) {
+        setState(() {
+            _activities = activityList.map((e) => ActivityLog.fromJson(e)).toList();
+        });
+      }
 
       // 4. Fetch Registered Vehicles
       final vehicles = await _vehicleService.getVehicles();
-      _registrations = vehicles.map((v) => RegisteredVehicle(
-        vehicleNo: v.vehicleNumber,
-        owner: v.ownerName,
-        type: v.vehicleType,
-        flat: v.flatNumber,
-        status: v.status,
-        date: 'N/A', // Date might not be in Vehicle model, or added later
-      )).toList();
+      if (mounted) {
+        setState(() {
+            _registrations = vehicles.map((v) => RegisteredVehicle(
+                vehicleNo: v.vehicleNumber,
+                owner: v.ownerName,
+                type: v.vehicleType,
+                flat: v.flatNumber,
+                status: v.status,
+                date: 'N/A', 
+            )).toList();
+        });
+      }
       
       // Update timestamp
       final now = DateTime.now();
-      _lastUpdated = '${now.day} ${_getMonth(now.month)} ${now.year} ${now.hour}:${now.minute}:${now.second}';
+      if (mounted) {
+        setState(() {
+            _lastUpdated = '${now.day} ${_getMonth(now.month)} ${now.year} ${now.hour}:${now.minute}:${now.second}';
+        });
+      }
 
     } catch (e) {
       if (mounted) {
@@ -133,12 +164,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF5F7FA), // Light grey background
@@ -169,7 +194,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      drawer: const CustomDrawer(),
+      drawer: const CustomDrawer(currentRoute: 'Dashboard'),
       body: RefreshIndicator(
         onRefresh: _fetchData,
         child: SingleChildScrollView(
@@ -178,6 +203,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_isLoading)
+                 const Padding(
+                   padding: EdgeInsets.only(bottom: 20),
+                   child: LinearProgressIndicator(),
+                 ),
+              
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -206,13 +237,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     children: [
                       Text(
-                        'Updated $_lastUpdated',
+                        _lastUpdated.isEmpty ? 'Updating...' : 'Updated $_lastUpdated',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
                       const SizedBox(width: 4),
+                      if (!_isLoading)
                       Container(
                         width: 6,
                         height: 6,
@@ -228,7 +260,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 20),
 
               // Statistics Grid
-              if (_stats.isNotEmpty)
               LayoutBuilder(
                 builder: (context, constraints) {
                   final itemWidth = (constraints.maxWidth - 16) / 2;
@@ -257,7 +288,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Chart and Recent Activity Section
               Column(
                 children: [
-                   if (_weeklyData.isNotEmpty) MovementChart(data: _weeklyData),
+                   if (_isLoading && _weeklyData.isEmpty)
+                      const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+                   else if (_weeklyData.isNotEmpty) 
+                      MovementChart(data: _weeklyData)
+                   else 
+                      const SizedBox(height: 100, child: Center(child: Text('No chart data available'))),
+                      
                    const SizedBox(height: 20),
                    Container(
                      padding: const EdgeInsets.all(24),
@@ -300,7 +337,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                            ],
                          ),
                          const SizedBox(height: 16),
-                         if (_activities.isEmpty)
+                         if (_isLoading && _activities.isEmpty)
+                            const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
+                         if (!_isLoading && _activities.isEmpty)
                             const Text('No recent activity'),
                          if (_activities.isNotEmpty)
                          ListView.builder(
@@ -366,7 +405,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                        child: rowHeader(),
                      ),
                      const Divider(),
-                     if (_registrations.isEmpty)
+                     if (_isLoading && _registrations.isEmpty)
+                        const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
+                     if (!_isLoading && _registrations.isEmpty)
                         const Padding(
                           padding: EdgeInsets.all(8.0),
                           child: Text('No registered vehicles'),
